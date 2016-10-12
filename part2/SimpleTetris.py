@@ -22,4 +22,3 @@ class SimpleTetris(TetrisGame):
           raise "bad command!"
       self.down()          
 
-
