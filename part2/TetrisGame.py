@@ -1,4 +1,4 @@
-# Tetris backend v0.1
+# Tetris backend v0.2
 # D. Crandall, Sept 2016
 #
 # DON'T MODIFY THIS FILE! Or else we might not be able to grade your submission properly.
@@ -118,7 +118,7 @@ class TetrisGame:
     return self.state[0]
 
   # return current score
-  def get_score(eslf):
+  def get_score(self):
     return self.score
 
   # return currently-falling piece, and its current row and column on the boar

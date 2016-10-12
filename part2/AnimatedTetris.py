@@ -38,3 +38,4 @@ class AnimatedTetris(TetrisGame):
     t3.start()
 
     player.control_game(self)
+
