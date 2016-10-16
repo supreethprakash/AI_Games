@@ -33,6 +33,52 @@ class ComputerPlayer:
     #     issue game commands
     #   - tetris.get_board() returns the current state of the board, as a list of strings.
     #
+    def calcRange(self, rotatedPiece):
+        return 1 + tetris.BOARD_WIDTH - ComputerPlayer.pieceWidth(self, rotatedPiece)
+
+    def checkCollisionWithRow(self, board, piece, row, col):
+        return row < tetris.BOARD_HEIGHT and TetrisGame.check_collision((board, 0), piece, row + 1,
+                                   col)
+
+    def calcAggregateHeight(self, board):
+        aggHeight = []
+        for i in range(0, tetris.BOARD_WIDTH):
+            for j in range(len(board)):
+                if board[j][i] == 'x':
+                    aggHeight.append(len(board) - j)
+                    break
+                if j == len(board) - 1:
+                    aggHeight.append(0)
+        return aggHeight
+
+    def calcBumpness(self, height):
+        bumpness = 0
+
+        for i in range(len(height)):
+            if i < len(height) - 1:
+                bumpness += abs(height[i] - height[i + 1])
+
+        return bumpness
+
+    def calcHoles(self, board, height):
+        holes = 0
+
+        for i in range(0, tetris.BOARD_WIDTH):
+            if sum(height) != 0:
+                for j in range(len(board) - height[i], len(board)):
+                    if board[j][i] == ' ':
+                        holes += 1
+
+        return holes
+
+    def calculateFullLines(self, board):
+        completeLines = 0
+
+        for i in range(len(board)):
+            if board[i].count(board[i][0]) == len(board[i]) and board[i][0] == 'x':
+                completeLines += 1
+
+        return completeLines
 
     def rotateAndPlace(self, origBoard, piece, nextPiece):
         tempBoard = origBoard[:]
@@ -41,88 +87,82 @@ class ComputerPlayer:
 
         angles = [0, 90, 180, 270]
 
-        highestScore = -9999
+        highestScore = None
         bestrow = -1
         bestcol = -1
         bestPiece = []
+        angle = 0
 
-        for rotation in angles:
-            rotatedPiece = TetrisGame.rotate_piece(tempPiece, rotation)
-            for j in range(tetris.BOARD_WIDTH - ComputerPlayer.pieceWidth(self, rotatedPiece) + 1):
-                while not TetrisGame.check_collision((tempBoard, 0), rotatedPiece, row + 1,
-                                                     j) and row < tetris.BOARD_HEIGHT:
-                    row += 1
-                if not TetrisGame.check_collision((origBoard, 0), rotatedPiece, i, j):
-                    row, col = i, j
-                    placedPiece = TetrisGame.place_piece((tempBoard, 0), rotatedPiece, row, col)
+        #Assigning Penalties or Rewards
+        penaltyForHigherLines = -2
+        rewardForCompleteLines = 4
+        penaltyForMoreHoles = -3
+        penaltyForMoreBumpness = -1
+        try:
+            for rotation in angles:
+                rotatedPiece = TetrisGame.rotate_piece(tempPiece, rotation)
+                for column in range(ComputerPlayer.calcRange(self, rotatedPiece)):
+                    row = 0
+
+                    while not ComputerPlayer.checkCollisionWithRow(self, tempBoard, rotatedPiece, row, column):
+                        row += 1
+
+                    placedPiece = TetrisGame.place_piece((tempBoard, 0), rotatedPiece, row, column)
                     temporaryBoard = placedPiece[0][:]
+                    placedRow = row - 1
+
                     for rotation1 in angles:
                         rotatedNextPiece = TetrisGame.rotate_piece(tempNextPiece, rotation1)
+                        for col1 in range(ComputerPlayer.calcRange(self, rotatedNextPiece)):
+                            row1 = 0
+                            while not ComputerPlayer.checkCollisionWithRow(self, temporaryBoard, rotatedNextPiece, row1, col1):
+                                row1 += 1
+                            placedNextPiece = TetrisGame.place_piece((temporaryBoard, 0), rotatedNextPiece,
+                                                                     row1, col1)
 
-                        for row1 in range(TetrisGame.BOARD_HEIGHT - 1, -1, -1):
-                            for col1 in range(TetrisGame.BOARD_WIDTH):
-                                if not TetrisGame.check_collision((temporaryBoard, 0), rotatedNextPiece, row1, col1):
-                                    placedNextPiece = TetrisGame.place_piece((temporaryBoard, 0), rotatedNextPiece,
-                                                                             row1, col1)
-                                    board = placedNextPiece[0][:]
+                            aggHeight = ComputerPlayer.calcAggregateHeight(self, placedNextPiece[0])
+                            bumpiness = ComputerPlayer.calcBumpness(self, aggHeight)
+                            holes = ComputerPlayer.calcHoles(self, placedNextPiece[0], aggHeight)
+                            completeLines = ComputerPlayer.calculateFullLines(self, placedNextPiece[0])
 
-                                    aggHeight = []
-                                    for i in range(0, tetris.BOARD_WIDTH):
-                                        ctr = 0
-                                        for j in range(len(board)):
-                                            if board[j][i] == 'x':
-                                                aggHeight.append(len(board) - j)
-                                                break
-                                            if j == len(board) - 1:
-                                                aggHeight.append(0)
+                            score = (penaltyForHigherLines * sum(aggHeight)) + (rewardForCompleteLines * completeLines) + (
+                                penaltyForMoreHoles * holes) + (penaltyForMoreBumpness * bumpiness)
 
-                                    # print 'Agg Height', aggHeight
-
-                                    bumpness = 0
-
-                                    for i in range(len(aggHeight)):
-                                        if i < len(aggHeight) - 1:
-                                            bumpness += abs(aggHeight[i] - aggHeight[i + 1])
-                                    # print 'Bumpness', bumpness
-
-                                    holes = 0
-
-                                    for i in range(0, tetris.BOARD_WIDTH):
-                                        if sum(aggHeight) != 0:
-                                            for j in range(len(board) - aggHeight[i], len(board)):
-                                                if board[j][i] == ' ':
-                                                    holes += 1
-
-                                    # print 'Holes', holes
-
-                                    completeLines = 0
-
-                                    for i in range(len(board)):
-                                        if board[i].count(board[i][0]) == len(board[i]) and board[i][0] == 'x':
-                                            completeLines += 1
-
-                                    # print 'completeLines', completeLines
-
-                                    score = (-0.51066 * sum(aggHeight)) + (0.760666 * completeLines) + (
-                                        -0.35663 * holes) + (-0.184483 * bumpness)
-
-                                    if score > highestScore:
-                                        highestScore = score
-                                        bestrow = row
-                                        bestcol = col
-                                        bestPiece = rotatedPiece
-                                        angle = rotation
+                            if score > highestScore:
+                                highestScore = score
+                                bestrow = placedRow
+                                bestcol = column
+                                bestPiece = rotatedPiece
+                                angle = rotation
+        except:
+            print 'Something Must have gone wrong'
 
         return bestrow, bestcol, bestPiece, angle
 
 
-    def evaluate(self, tetris):
-        board = tetris.get_board()
-        print board
-
     def get_moves(self, tetris):
-        # super simple current algorithm: just randomly move left, right, and rotate a few times
-        return random.choice("mnb") * random.randint(1, 10)
+        rotationNumber = {0: 0, 90: 1, 180: 2, 270: 3}
+        steps = ''
+        while 1:
+            row, col, piece1, angle = ComputerPlayer.rotateAndPlace(self, tetris.get_board(), tetris.get_piece()[0], tetris.get_next_piece())
+            numberOfRotations = rotationNumber.get(angle)
+
+            while numberOfRotations > 0:
+                steps += 'n'
+                numberOfRotations -= 1
+
+            offset = tetris.col - col
+
+            if offset > 0:
+                while offset > 0:
+                    steps += 'b'
+                    offset -= 1
+            else:
+                while offset < 0:
+                    steps += 'm'
+                    offset += 1
+
+            return steps
        
     # This is the version that's used by the animted version. This is really similar to get_moves,
     # except that it runs as a separate thread and you should access various methods and data in
@@ -134,28 +174,19 @@ class ComputerPlayer:
     #     issue game commands
     #   - tetris.get_board() returns the current state of the board, as a list of strings.
     #
-    def evaluate(self, str):
-        print str
-
     def pieceWidth(self, curPiece):
-        max = -9999
-        for i in range(curPiece):
-            if len(curPiece) > max:
-                max = len(curPiece)
-        return max
-
+        maximumWidth = -9999
+        for i in range(len(curPiece)):
+            if len(curPiece[i]) > maximumWidth:
+                maximumWidth = len(curPiece[i])
+        return maximumWidth
 
     def control_game(self, tetris):
-        # another super simple algorithm: just move piece to the least-full column
+        rotationNumber = {0: 0, 90: 1, 180: 2, 270: 3}
+
         while 1:
             time.sleep(0.1)
-            board = tetris.get_board()
-            piece = tetris.get_piece()[0]
-            row, col, piece1, angle = ComputerPlayer.rotateAndPlace(self, board, piece, tetris.get_next_piece())
-            print row, tetris.col, col, piece, angle
-
-            rotationNumber = {0: 0, 90: 1, 180: 2, 270: 3}
-
+            row, col, bestPiece, angle = ComputerPlayer.rotateAndPlace(self, tetris.get_board(), tetris.get_piece()[0], tetris.get_next_piece())
             numberOfRotations = rotationNumber.get(angle)
 
             while numberOfRotations > 0:
@@ -174,20 +205,7 @@ class ComputerPlayer:
                     offset += 1
             tetris.down()
 
-'''
-            if(index < tetris.col):
-                tetris.left()
-            elif(index > tetris.col):
-                tetris.right()
-            else:
-                tetris.down()
-'''
-
-
-###################
-#### main program
-
-(player_opt, interface_opt) = ['computer', 'animated']
+(player_opt, interface_opt) = sys.argv[1:3]
 
 try:
     if player_opt == "human":
