@@ -80,6 +80,9 @@ class ComputerPlayer:
 
         return completeLines
 
+    def calculateAlitude(self, height):
+        return max(height) - min(height)
+
     def rotateAndPlace(self, origBoard, piece, nextPiece):
         tempBoard = origBoard[:]
         tempPiece = piece[:]
@@ -87,17 +90,17 @@ class ComputerPlayer:
 
         angles = [0, 90, 180, 270]
 
-        highestScore = None
         bestrow = -1
         bestcol = -1
         bestPiece = []
         angle = 0
-
-        #Assigning Penalties or Rewards
-        penaltyForHigherLines = -2
-        rewardForCompleteLines = 4
+        highestScore = -9999
+        #Assigning a negative for Penalties or a positive values for Rewards
+        penaltyForHigherLines = -1.5
+        rewardForCompleteLines = 4.5
         penaltyForMoreHoles = -3
-        penaltyForMoreBumpness = -1
+        penaltyForMoreBumpness = -1.5
+
         try:
             for rotation in angles:
                 rotatedPiece = TetrisGame.rotate_piece(tempPiece, rotation)
@@ -121,12 +124,9 @@ class ComputerPlayer:
                                                                      row1, col1)
 
                             aggHeight = ComputerPlayer.calcAggregateHeight(self, placedNextPiece[0])
-                            bumpiness = ComputerPlayer.calcBumpness(self, aggHeight)
-                            holes = ComputerPlayer.calcHoles(self, placedNextPiece[0], aggHeight)
-                            completeLines = ComputerPlayer.calculateFullLines(self, placedNextPiece[0])
 
-                            score = (penaltyForHigherLines * sum(aggHeight)) + (rewardForCompleteLines * completeLines) + (
-                                penaltyForMoreHoles * holes) + (penaltyForMoreBumpness * bumpiness)
+                            score = (penaltyForHigherLines * sum(aggHeight)) + (rewardForCompleteLines * ComputerPlayer.calculateFullLines(self, placedNextPiece[0])) + (
+                                penaltyForMoreHoles * ComputerPlayer.calcHoles(self, placedNextPiece[0], aggHeight)) + (penaltyForMoreBumpness * ComputerPlayer.calcBumpness(self, aggHeight))
 
                             if score > highestScore:
                                 highestScore = score
